@@ -20,12 +20,13 @@ K_DN = '[B'
 class PlayerAgentBlocking(BaseAgent):
     """Block for keyboard input."""
 
-    def __init__(self, character=characters.Bomber, agent_control='arrows'):
+    def __init__(self, character=characters.Bomber, agent_control='wasd'):
         super(PlayerAgentBlocking, self).__init__(character)
         self.agent_control = agent_control
 
     def act(self, obs, action_space):
         key = click.getchar()
+        
         if self.agent_control == 'arrows':
             if key == K_RT + K_PREFIX: return constants.Action.Right.value
             if key == K_LF + K_PREFIX: return constants.Action.Left.value

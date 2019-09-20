@@ -22,6 +22,7 @@ import gym
 from pommerman import helpers, make
 from pommerman.agents import TensorForceAgent
 
+import timeit
 
 CLIENT = docker.from_env()
 
@@ -136,12 +137,22 @@ def main():
     # Create a Proximal Policy Optimization agent
     agent = training_agent.initialize(env)
 
+    agent.restore_model('saved_models\\')
+
+
     atexit.register(functools.partial(clean_up_agents, agents))
     wrapped_env = WrappedEnv(env, visualize=args.render)
+
+    runner_time = timeit.default_timer()
+
     runner = Runner(agent=agent, environment=wrapped_env)
-    runner.run(episodes=10, max_episode_timesteps=2000)
+    runner.run(episodes=10000, max_episode_timesteps=2000)
     print("Stats: ", runner.episode_rewards, runner.episode_timesteps,
-          runner.episode_times)
+        runner.episode_times)
+
+    print('Runner time: ', timeit.default_timer() - runner_time)
+
+    agent.save_model('saved_models\\ppo', False)
 
     try:
         runner.close()
