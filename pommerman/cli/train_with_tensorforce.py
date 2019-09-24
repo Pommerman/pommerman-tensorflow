@@ -23,9 +23,18 @@ from pommerman import helpers, make
 from pommerman.agents import TensorForceAgent
 
 import timeit
+import pickle
+import matplotlib.pyplot as plt
 
 CLIENT = docker.from_env()
+save_name = 'ppo'
+def save_obj(obj):
+    with open('./saved_models/'+ save_name + '.pkl', 'wb') as f:
+        pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
 
+def load_obj():
+    with open('./saved_models/' + save_name + '.pkl', 'rb') as f:
+        return pickle.load(f)
 
 def clean_up_agents(agents):
     """Stops all agents"""
@@ -145,15 +154,25 @@ def main():
 
     runner_time = timeit.default_timer()
 
-    runner = Runner(agent=agent, environment=wrapped_env)
-    runner.run(episodes=10000, max_episode_timesteps=2000)
-    print("Stats: ", runner.episode_rewards, runner.episode_timesteps,
-        runner.episode_times)
+    hist = load_obj()
+    for i in range(1):
+        runner = Runner(agent=agent, environment=wrapped_env, history=hist)
+        runner.run(episodes=1000, max_episode_timesteps=2000)
+        print("Stats: ", runner.episode_rewards, runner.episode_timesteps,
+            runner.episode_times)
+        hist2 = {
+            "episode_rewards": runner.episode_rewards,
+            "episode_timesteps": runner.episode_timesteps,
+            "episode_times": runner.episode_times
+        }
+        hist = hist2
 
     print('Runner time: ', timeit.default_timer() - runner_time)
 
     agent.save_model('saved_models\\ppo', False)
-
+    save_obj(hist)
+    plt.plot(runner.episode_rewards)
+    plt.show()
     try:
         runner.close()
     except AttributeError as e:

@@ -21,11 +21,12 @@ def main():
 
     # Create a set of agents (exactly four)
     agent_list = [
+        test_agent,
         agents.SimpleAgent(),
         # agents.RandomAgent(),
         agents.SimpleAgent(),
-        agents.SimpleAgent(),
-        test_agent
+        
+        agents.SimpleAgent()
         # agents.DockerAgent("pommerman/simple-agent", port=12345),
     ]
 
@@ -34,7 +35,7 @@ def main():
     env = pommerman.make('PommeFFACompetition-v0', agent_list)
 
     tf_agent = test_agent.initialize(env)
-    tf_agent.restore_model('saved_models\\', 'ppo')
+    tf_agent.restore_model('saved_models\\')
 
     observations = []
     inputs = []
@@ -47,9 +48,9 @@ def main():
             env.render()
             actions = env.act(state)
 
-            ppo_state = envWrapper(env, state, 3)
+            ppo_state = envWrapper(env, state, 0)
 
-            actions[3] = tf_agent.act(ppo_state)
+            actions[0] = tf_agent.act(ppo_state)
             state, reward, done, info = env.step(actions)
             # TODO Change indices of arrays to select player info.
             # observations.append({
