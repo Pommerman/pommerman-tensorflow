@@ -16,6 +16,7 @@ import os
 import argparse
 import docker
 from tensorforce.execution import Runner
+from pommerman.runner import ExperimentRunner
 from tensorforce.contrib.openai_gym import OpenAIGym
 import gym
 
@@ -146,7 +147,7 @@ def main():
     # Create a Proximal Policy Optimization agent
     agent = training_agent.initialize(env)
 
-    agent.restore_model('saved_models\\')
+    agent.restore_model('./saved_models')
 
 
     atexit.register(functools.partial(clean_up_agents, agents))
@@ -156,8 +157,8 @@ def main():
 
     hist = load_obj()
     for i in range(1):
-        runner = Runner(agent=agent, environment=wrapped_env, history=hist)
-        runner.run(episodes=1000, max_episode_timesteps=2000)
+        runner = ExperimentRunner(agent=agent, environment=wrapped_env, history=hist)
+        runner.run(episodes=10, max_episode_timesteps=2000)
         print("Stats: ", runner.episode_rewards, runner.episode_timesteps,
             runner.episode_times)
         hist2 = {
