@@ -477,13 +477,15 @@ class ForwardModel(object):
             curr_board[flame.position] = constants.Item.Flames.value
 
         # Kill agents on flames. Otherwise, update position on curr_board.
+        cur_deaths=0
         for agent in alive_agents:
             if curr_board[agent.position] == constants.Item.Flames.value:
+                cur_deaths+=1
                 agent.die()
             else:
                 curr_board[agent.position] = utility.agent_value(agent.agent_id)
 
-        return curr_board, curr_agents, curr_bombs, curr_items, curr_flames
+        return curr_board, curr_agents, curr_bombs, curr_items, curr_flames,cur_deaths
 
     def get_observations(self, curr_board, agents, bombs, flames,
                          is_partially_observable, agent_view_size,
@@ -627,8 +629,8 @@ class ForwardModel(object):
             }
 
     @staticmethod
-    def get_rewards(agents, game_type, step_count, max_steps):
-
+    def get_rewards(agents, game_type, step_count, max_steps,cur_deaths):
+        #train_with_tensorfoce stops episode when tensorforce agent dies, so no point in setting negative rewards past death, -1 is lowest
         def any_lst_equal(lst, values):
             '''Checks if list are equal'''
             return any([lst == v for v in values])
@@ -644,7 +646,39 @@ class ForwardModel(object):
                 return [-1] * 4
             else:
                 # Game running: 0 for alive, -1 for dead.
-                return [int(agent.is_alive) - 1 for agent in agents]
+                #return [int(agent.is_alive) - 1 for agent in agents]
+                rewards=[0 for agent in agents]
+                for i,agent in enumerate(agents):
+                    rewards[i]+=int(agent.is_alive)*cur_deaths*0.25 #rule 1
+                    rewards[i]+=agent.ammo*0.01  #rule 2
+                    rewards[i]+=agent.can_kick*0.01  #rule 2
+                    rewards[i]+=agent.blast_strength*0.01  #rule 2
+                
+                #rule 1:get single reward in death event
+                '''
+                cur deaths (# of deaths occuring at this timestep) is implemented in forward_model.step, modified in v0, and here
+                TODO: cur needs to be modified in other game modes as well
+                '''
+                #rule 2: rewards for getting powerups(not exactly, but for improvements to agent status)
+                '''
+                not explicitly a reward for picking up powerups, but i think agent will learn to pick them up with these rewards
+                '''
+                
+                
+                
+                '''
+                other ideas:
+                    safety rating of squares, get points for safety of your square and danger of enemy squares
+                    rewards for blowing up boxes
+                    rewards for visiting new squares
+                    
+                '''
+                
+            
+                
+                return rewards
+            
+            
         elif game_type == constants.GameType.OneVsOne:
             if len(alive_agents) == 1:
                 # An agent won. Give them +1, the other -1.

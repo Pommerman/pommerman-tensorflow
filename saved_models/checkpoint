@@ -1,2 +1,2 @@
-model_checkpoint_path: "ppo"
-all_model_checkpoint_paths: "ppo"
+model_checkpoint_path: "testing.ckpt"
+all_model_checkpoint_paths: "testing.ckpt"

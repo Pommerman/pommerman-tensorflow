@@ -49,3 +49,7 @@ We strive for an open community. Please read over our [CODE OF CONDUCT](../maste
 # Citation
 
 If you use the Pommerman environment in your research, please cite us using the [bibtex file](../master/docs/pommerman.bib) in docs.
+
+# Notes
+
+The following edits are authored by Myron Kwan.

@@ -50,7 +50,8 @@ class Pomme(gym.Env):
         self._viewer = None
         self._is_partially_observable = is_partially_observable
         self._env = env
-
+        self.cur_deaths=0
+        
         self.training_agent = None
         self.model = forward_model.ForwardModel()
 
@@ -147,7 +148,7 @@ class Pomme(gym.Env):
 
     def _get_rewards(self):
         return self.model.get_rewards(self._agents, self._game_type,
-                                      self._step_count, self._max_steps)
+                                      self._step_count, self._max_steps,self.cur_deaths)
 
     def _get_done(self):
         return self.model.get_done(self._agents, self._step_count,
@@ -194,8 +195,8 @@ class Pomme(gym.Env):
             self._items,
             self._flames,
             max_blast_strength=max_blast_strength)
-        self._board, self._agents, self._bombs, self._items, self._flames = \
-                                                                    result[:5]
+        self._board, self._agents, self._bombs, self._items, self._flames,self.cur_deaths = \
+                                                                    result[:6]
 
         done = self._get_done()
         obs = self.get_observations()
