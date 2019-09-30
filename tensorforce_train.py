@@ -16,7 +16,7 @@ import argparse
 
 import tensorforce
 
-from tensorforce.execution import Runner
+from tensorforce.execution import ParallelRunner
 from tensorforce.environments.openai_gym import OpenAIGym
 import gym
 
@@ -40,7 +40,7 @@ class WrappedEnv(OpenAIGym):
     def __init__(self, gym, visualize=False):
         self.gym = gym
         self.visualize = visualize
-
+        self.thread=None
     def execute(self, actions):
         if self.visualize:
             self.gym.render()
@@ -59,8 +59,8 @@ class WrappedEnv(OpenAIGym):
         obs = self.gym.reset()
         agent_obs = self.gym.featurize(obs[3])
         return agent_obs
-
-
+    
+    
 
 def main():
     '''CLI interface to bootstrap taining'''
@@ -130,6 +130,12 @@ def main():
             action='store_true',
             help='sets true to load prev model'
             )
+    parser.add_argument(
+            '--numprocs',
+            default=1,
+            type=int,
+            help='num parallel processes. default=1'
+            )
     args = parser.parse_args()
 
     config = args.config
@@ -137,6 +143,7 @@ def main():
     record_json_dir = args.record_json_dir
     agent_env_vars = args.agent_env_vars
     game_state_file = args.game_state_file
+    num_procs=args.numprocs
 
     #variables    
     save_path='saved_models\\'
@@ -165,15 +172,20 @@ def main():
         assert not os.path.isdir(args.record_json_dir)
         os.makedirs(args.record_json_dir)   
 
-    agent = training_agent.initialize(env)
-    
+    agent = training_agent.initialize(env,num_procs)
+
     
     if args.loadfile:
        agent.restore(directory=save_path,filename=model_name)
 
     atexit.register(functools.partial(clean_up_agents, agents))
-    wrapped_env = WrappedEnv(env, visualize=args.render)
-
+     
+    wrapped_envs=[]
+    for i in range(num_procs):
+        wrapped_envs.append(WrappedEnv(env, visualize=args.render))
+         
+ 
+    #wrapped_env=WrappedEnv(env,visualize=args.render))
 
     runner_time = timeit.default_timer()
 
@@ -189,7 +201,7 @@ def main():
          history=None
 
 
-    runner = Runner(agent=agent, environment=wrapped_env)
+    runner = ParallelRunner(agent=agent, environments=wrapped_envs)
     
     num_episodes+=runner.global_episode #runner trains off number of global episodes
     '''

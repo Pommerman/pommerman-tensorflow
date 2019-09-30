@@ -16,7 +16,7 @@ class TensorForceAgent(BaseAgent):
         """This agent has its own way of inducing actions. See train_with_tensorforce."""
         return None
 
-    def initialize(self, env):
+    def initialize(self, env ,numprocs):
         from gym import spaces
         from tensorforce.agents import PPOAgent
 
@@ -40,5 +40,7 @@ class TensorForceAgent(BaseAgent):
                     dict(type='dense', size=64)
                 ],
                 learning_rate=1e-4,
-                max_episode_timesteps=2000)
+                max_episode_timesteps=2000,
+                parallel_interactions=numprocs
+                )
         return None
