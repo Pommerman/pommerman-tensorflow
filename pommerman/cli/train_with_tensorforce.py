@@ -17,7 +17,7 @@ import argparse
 import docker
 from tensorforce.execution import ParallelRunner
 from tensorforce.execution import Runner
-from pommerman.runner import ExperimentRunner
+#from pommerman.runner import ExperimentRunner
 from tensorforce.contrib.openai_gym import OpenAIGym
 import gym
 
@@ -37,6 +37,18 @@ def save_obj(obj):
 def load_obj():
     with open('./saved_models/' + save_name + '.pkl', 'rb') as f:
         return pickle.load(f)
+
+def load_model(agent, path):
+    if(os.path.exists(path) == False):
+        os.mkdir(path)
+        return []
+    
+    agent.restore_model(path)
+    return load_obj()
+
+def save_model(agent, path, hist, addTimestamp):
+    agent.save_model(path, addTimestamp)
+    save_obj(hist)
 
 def clean_up_agents(agents):
     """Stops all agents"""
@@ -185,12 +197,9 @@ def main():
         os.makedirs(args.record_json_dir)
 
     # Create a Proximal Policy Optimization agent
-    agent = training_agent.initialize(env, summarizer={'directory': 'tensorforce_agent'})
+    agent = training_agent.initialize(env, summarizer={'directory': 'tensorforce_agent', 'labels': 'all'})
 
-    hist = []
-    agent.restore_model('./saved_models')
-    hist = load_obj()
-
+    hist = load_model(agent, './saved_models')
 
     atexit.register(functools.partial(clean_up_agents, agents))
     wrapped_env = WrappedEnv(env, visualize=args.render)
@@ -200,7 +209,7 @@ def main():
     
     for i in range(1):
         runner = ParallelRunner(agent=agent, environment=wrapped_env, history=hist)
-        runner.run(episodes=2000, max_episode_timesteps=2000)
+        runner.run(episodes=20000, max_episode_timesteps=2000)
 
         print("Stats: ", runner.episode_rewards, runner.episode_timesteps,
             runner.episode_times)
@@ -213,8 +222,8 @@ def main():
 
     print('Runner time: ', timeit.default_timer() - runner_time)
 
-    agent.save_model('saved_models\\ppo', True)
-    save_obj(hist)
+    save_model(agent, 'saved_models\\ppo', hist, True)
+    
     plt.plot(runner.episode_rewards)
     plt.show()
     try:
