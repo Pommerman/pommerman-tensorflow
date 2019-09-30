@@ -201,6 +201,7 @@ def main():
 
     hist = load_model(agent, './saved_models')
 
+
     atexit.register(functools.partial(clean_up_agents, agents))
     wrapped_env = WrappedEnv(env, visualize=args.render)
 
