@@ -25,12 +25,12 @@ class TensorForceAgent(BaseAgent):
                 actions = {
                     str(num): {
                         'type': int,
-                        'num_actions': space.n
+                        'num_values': space.n
                     }
                     for num, space in enumerate(env.action_space.spaces)
                 }
             else:
-                actions = dict(type='int', num_actions=env.action_space.n)
+                actions = dict(type='int', num_values=env.action_space.n)
 
             return PPOAgent(
                 states=dict(type='float', shape=env.observation_space.shape),
@@ -39,6 +39,6 @@ class TensorForceAgent(BaseAgent):
                     dict(type='dense', size=64),
                     dict(type='dense', size=64)
                 ],
-                batching_capacity=1000,
-                step_optimizer=dict(type='adam', learning_rate=1e-4))
+                learning_rate=1e-4,
+                max_episode_timesteps=2000)
         return None

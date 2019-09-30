@@ -18,7 +18,7 @@ def main():
     print(pommerman.REGISTRY)
 
     save_path='saved_models\\'
-    model_name='model'+'.ckpt'
+    model_name='testing'
     test_agent = agents.TensorForceAgent()
 
 
@@ -40,7 +40,7 @@ def main():
     env = pommerman.make('PommeFFACompetition-v0', agent_list)
 
     tf_agent = test_agent.initialize(env)
-    tf_agent.restore_model(directory=save_path,file=model_name)
+    tf_agent.restore(directory=save_path,filename=model_name)
 
     observations = []
     inputs = []
