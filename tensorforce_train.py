@@ -1,52 +1,32 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Sep 27 16:38:46 2019
+Created on Sun Sep 29 17:01:53 2019
 
 @author: Myron Kwan
-"""
 
-"""Train an agent with TensorForce.
 
-Call this with a config, a game, and a list of agents, one of which should be a
-tensorforce agent. The script will start separate threads to operate the agents
-and then report back the result.
-
-An example with all three simple agents running ffa:
-python train_parallel.py --agents tensorforce::ppo, test::agents.SimpleAgent, test::agents.SimpleAgent, test::agents.SimpleAgent --config=PommeFFACompetition-v0
-
-python train_parallel.py --agents "tensorforce::ppo,random::,random::,random::" --config=PommeFFACompetition-v0 --episodes 400 --batch-size 1 --modelname testing --num_processes 4
-
-python train_parallel.py --agents "tensorforce::ppo,test::agents.SimpleAgent,test::agents.SimpleAgent,test::agents.SimpleAgent" --config=PommeFFACompetition-v0 --episodes 1000 --batch-size 100 --modelname rewardsv0
+python tensorforce_train.py --agents "tensorforce::ppo,random::,random::,random::" --config=PommeFFACompetition-v0 --episodes 100 --batch-size 1 --modelname testing 
 
 """
+
 import atexit
 import functools
-import os
-
+import os 
 import argparse
-import docker
-from tensorforce.execution import ParallelRunner
-from tensorforce.contrib.openai_gym import OpenAIGym
+
+import tensorforce
+
+from tensorforce.execution import Runner
+from tensorforce.environments.openai_gym import OpenAIGym
 import gym
 
-from pommerman import helpers, make
+from pommerman import helpers,make
 from pommerman.agents import TensorForceAgent
 
 import timeit
-import multiprocessing
-
 import matplotlib.pyplot as plt
 import pickle
 import numpy as np
-CLIENT = docker.from_env()
-
-
-
-
-
-
-
-
 
 def clean_up_agents(agents):
     """Stops all agents"""
@@ -61,11 +41,11 @@ class WrappedEnv(OpenAIGym):
         self.gym = gym
         self.visualize = visualize
 
-    def execute(self, action):
+    def execute(self, actions):
         if self.visualize:
             self.gym.render()
 
-        actions = self.unflatten_action(action=action)
+        actions = self.unflatten_action(action=actions)
 
         obs = self.gym.get_observations()
         all_actions = self.gym.act(obs)
@@ -79,6 +59,7 @@ class WrappedEnv(OpenAIGym):
         obs = self.gym.reset()
         agent_obs = self.gym.featurize(obs[3])
         return agent_obs
+
 
 
 def main():
@@ -149,12 +130,6 @@ def main():
             action='store_true',
             help='sets true to load prev model'
             )
-    parser.add_argument(
-            '--num_processes',
-            default=8,
-            type=int,
-            help='number of parallel training instances, default is 8.'
-            )
     args = parser.parse_args()
 
     config = args.config
@@ -163,21 +138,17 @@ def main():
     agent_env_vars = args.agent_env_vars
     game_state_file = args.game_state_file
 
-
     #variables    
-    num_procs=args.num_processes
     save_path='saved_models\\'
-    model_name=args.modelname+'.ckpt'
+    model_name=args.modelname
     batch_size=args.batch_size
     num_episodes=args.episodes
     assert(num_episodes%batch_size==0)
-    # TODO: After https://github.com/MultiAgentLearning/playground/pull/40
-    #       this is still missing the docker_env_dict parsing for the agents.
+    
     agents = [
         helpers.make_agent_from_string(agent_string, agent_id + 1000)
         for agent_id, agent_string in enumerate(args.agents.split(","))
     ]
-
     env = make(config, agents, game_state_file)
     training_agent = None
 
@@ -186,89 +157,81 @@ def main():
             training_agent = agent
             env.set_training_agent(agent.agent_id)
             break
-
+        
     if args.record_pngs_dir:
         assert not os.path.isdir(args.record_pngs_dir)
         os.makedirs(args.record_pngs_dir)
     if args.record_json_dir:
         assert not os.path.isdir(args.record_json_dir)
-        os.makedirs(args.record_json_dir)
+        os.makedirs(args.record_json_dir)   
 
-    #decleare execution dict()
-    '''
-    found in model.py line 135
-    self.execution_type = self.execution_spec["type"] can be 'single' or 'distributed'
-        self.session_config = self.execution_spec["session_config"]
-        self.distributed_spec = self.execution_spec["distributed_spec"] is a dict of 
-        
-        
-        if self.local_model is true in model.py, we dont need cluster spec.
-        distributed spec {job:'worker' or 'ps',task_index:,cluster_spec:,} also optional: {protocol,session_config}
-        
-        https://github.com/tensorflow/examples/blob/master/community/en/docs/deploy/distributed.md
-        ''
-    '''
-    execution={}
-    execution['num_parallel']=4
-    execution['type']='distributed'
-    execution['session_config']=
-    execution['distributed_spec']=
-
+    agent = training_agent.initialize(env)
     
-    # Create a Proximal Policy Optimization agent...with num of parallel agents
-    agent = training_agent.initialize(env,execution)
-
+    
     if args.loadfile:
-        agent.restore_model(save_path)
-    
+       agent.restore(directory=save_path,filename=model_name)
+
     atexit.register(functools.partial(clean_up_agents, agents))
     wrapped_env = WrappedEnv(env, visualize=args.render)
-    
-    runner_time = timeit.default_timer()
-    
-    #load history.pickle
-    if args.loadfile:
-        try :
-            handle = open(save_path+'history.pickle','rb')
-            history=pickle.load(handle)
-        except:
-            history=None
-    else:
-        history=None
-    
 
-    if history:
-        runner=ParallelRunner(agent=agent,environment=wrapped_env,history=history)
+
+    runner_time = timeit.default_timer()
+
+    #load history.pickle
+
+    if args.loadfile:
+         try :
+             handle = open(save_path+model_name+'history.pickle','rb')
+             history=pickle.load(handle)
+         except:
+             history=None
     else:
-        runner=ParallelRunner(agent=agent,environment=wrapped_env,history=history)
+         history=None
+
+
+    runner = Runner(agent=agent, environment=wrapped_env)
     
+    num_episodes+=runner.global_episode #runner trains off number of global episodes
+    '''
+    if you trained 100 episodes, num_episodes needs to be 200 if you want to train another 100
+    '''
     
-    #need to parallelize the run, how does parallel runner update our ppo agent?
-    #need to create worker process that runs 1 iteration, then updates episode counter 
-    runner.run(episodes=num_episodes, max_episode_timesteps=2000)
-   #print("Stats: ", runner.episode_rewards, runner.episode_timesteps,
-        #runner.episode_times)
+    runner.run(num_episodes=num_episodes, max_episode_timesteps=2000)
+    
     print(runner.episode_rewards)
     
-    history={}
-    history['episode_rewards']=runner.episode_rewards
-    history['episode_timesteps']=runner.episode_timesteps
-    history['episode_times']=runner.episode_times
-    with open(save_path+'history.pickle','wb') as handle:
+    if history:
+        history['episode_rewards'].extend(runner.episode_rewards)
+        history['episode_timesteps'].extend(runner.episode_timesteps)
+        history['episode_seconds'].extend(runner.episode_seconds)
+        history['episode_agent_seconds'].extend(runner.episode_agent_seconds)
+    else:
+        history={}
+        history['episode_rewards']=runner.episode_rewards
+        history['episode_timesteps']=runner.episode_timesteps
+        history['episode_seconds']=runner.episode_seconds
+        history['episode_agent_seconds']=runner.episode_agent_seconds
+        
+    with open(save_path+model_name+'history.pickle','wb') as handle:
         pickle.dump(history,handle)
-    agent.save_model(save_path+model_name, False)
+    agent.save(directory=save_path,filename=model_name,append_timestep=False)
     print('Runner time: ', timeit.default_timer() - runner_time)
 
-    plt.plot(np.arange(0,int(len(runner.episode_rewards)/batch_size)),np.mean(np.asarray(runner.episode_rewards).reshape(-1,batch_size),axis=1))
+    plt.plot(np.arange(0,int(len(history['episode_rewards'])/batch_size)),np.mean(np.asarray(history['episode_rewards']).reshape(-1,batch_size),axis=1))
     plt.title('average rewards per batch of episodes')
     plt.ylabel('average reward')
     plt.xlabel('batch of ' +str(batch_size)+' episodes')
     plt.show()    
     
+
     try:
         runner.close()
-    except AttributeError:
+    except AttributeError as e:
         pass
+
+
+
+
 
 
 if __name__ == "__main__":
