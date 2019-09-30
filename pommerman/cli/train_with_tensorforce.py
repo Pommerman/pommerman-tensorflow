@@ -191,7 +191,6 @@ def main():
     agent.restore_model('./saved_models')
     hist = load_obj()
 
-
     atexit.register(functools.partial(clean_up_agents, agents))
     wrapped_env = WrappedEnv(env, visualize=args.render)
 
