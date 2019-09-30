@@ -15,7 +15,9 @@ import os
 
 import argparse
 import docker
+from tensorforce.execution import ParallelRunner
 from tensorforce.execution import Runner
+from pommerman.runner import ExperimentRunner
 from tensorforce.contrib.openai_gym import OpenAIGym
 import gym
 
@@ -67,6 +69,45 @@ class WrappedEnv(OpenAIGym):
         obs = self.gym.reset()
         agent_obs = self.gym.featurize(obs[3])
         return agent_obs
+
+    @staticmethod
+    def conv_action(action):
+        if not isinstance(action, dict):
+            return action
+        elif all(name.startswith('gymmdc') for name in action) or \
+                all(name.startswith('gymbox') for name in action) or \
+                all(name.startswith('gymtpl') for name in action):
+            space_type = next(iter(action))[:6]
+            actions = list()
+            n = 0
+            while True:
+                if any(name.startswith(space_type + str(n) + '-') for name in action):
+                    inner_action = {
+                        name[name.index('-') + 1:] for name, inner_action in action.items()
+                        if name.startswith(space_type + str(n))
+                    }
+                    actions.append(OpenAIGym.unflatten_action(action=inner_action))
+                elif any(name == space_type + str(n) for name in action):
+                    actions.append(action[space_type + str(n)])
+                else:
+                    break
+                n += 1
+            return tuple(actions)
+        else:
+            actions = dict()
+            for name, action in action.items():
+                if '-' in name:
+                    name, inner_name = name.split('-', 1)
+                    if name not in actions:
+                        actions[name] = dict()
+                    actions[name][inner_name] = action
+                else:
+                    actions[name] = action
+            for name, action in actions.items():
+                if isinstance(action, dict):
+                    actions[name] = OpenAIGym.unflatten_action(action=action)
+            return actions
+
 
 
 def main():
@@ -144,9 +185,11 @@ def main():
         os.makedirs(args.record_json_dir)
 
     # Create a Proximal Policy Optimization agent
-    agent = training_agent.initialize(env)
+    agent = training_agent.initialize(env, summarizer={'directory': 'tensorforce_agent'})
 
-    agent.restore_model('saved_models\\')
+    hist = []
+    agent.restore_model('./saved_models')
+    hist = load_obj()
 
 
     atexit.register(functools.partial(clean_up_agents, agents))
@@ -154,10 +197,11 @@ def main():
 
     runner_time = timeit.default_timer()
 
-    hist = load_obj()
+    
     for i in range(1):
-        runner = Runner(agent=agent, environment=wrapped_env, history=hist)
-        runner.run(episodes=1000, max_episode_timesteps=2000)
+        runner = ParallelRunner(agent=agent, environment=wrapped_env, history=hist)
+        runner.run(episodes=2000, max_episode_timesteps=2000)
+
         print("Stats: ", runner.episode_rewards, runner.episode_timesteps,
             runner.episode_times)
         hist2 = {
@@ -169,7 +213,7 @@ def main():
 
     print('Runner time: ', timeit.default_timer() - runner_time)
 
-    agent.save_model('saved_models\\ppo', False)
+    agent.save_model('saved_models\\ppo', True)
     save_obj(hist)
     plt.plot(runner.episode_rewards)
     plt.show()
