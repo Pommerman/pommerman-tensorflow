@@ -18,7 +18,7 @@ import docker
 from tensorforce.execution import ParallelRunner
 from tensorforce.execution import Runner
 #from pommerman.runner import ExperimentRunner
-from tensorforce.contrib.openai_gym import OpenAIGym
+from tensorforce.environments.openai_gym import OpenAIGym
 import gym
 
 from pommerman import helpers, make
@@ -35,19 +35,22 @@ def save_obj(obj):
         pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
 
 def load_obj():
-    with open('./saved_models/' + save_name + '.pkl', 'rb') as f:
-        return pickle.load(f)
+    try:
+        with open('./saved_models/' + save_name + '.pkl', 'rb') as f:
+            return pickle.load(f)
+    except:
+        return []
 
 def load_model(agent, path):
     if(os.path.exists(path) == False):
         os.mkdir(path)
         return []
     
-    agent.restore_model(path)
+    # agent.restore_model(path)
     return load_obj()
 
 def save_model(agent, path, hist, addTimestamp):
-    agent.save_model(path, addTimestamp)
+    # agent.save_model(path, addTimestamp)
     save_obj(hist)
 
 def clean_up_agents(agents):
@@ -62,12 +65,12 @@ class WrappedEnv(OpenAIGym):
     def __init__(self, gym, visualize=False):
         self.gym = gym
         self.visualize = visualize
-
-    def execute(self, action):
+        self.thread=None
+    def execute(self, actions):
         if self.visualize:
             self.gym.render()
 
-        actions = self.unflatten_action(action=action)
+        actions = self.unflatten_action(action=actions)
 
         obs = self.gym.get_observations()
         all_actions = self.gym.act(obs)
@@ -165,6 +168,12 @@ def main():
         default=None,
         help="File from which to load game state. Defaults to "
         "None.")
+    parser.add_argument(
+        "--num_procs",
+        default=12,
+        type=int,
+        help="Number of parallel threads to run. Defaults to 12."
+    )
     args = parser.parse_args()
 
     config = args.config
@@ -172,6 +181,7 @@ def main():
     record_json_dir = args.record_json_dir
     agent_env_vars = args.agent_env_vars
     game_state_file = args.game_state_file
+    num_procs = args.num_procs
 
     # TODO: After https://github.com/MultiAgentLearning/playground/pull/40
     #       this is still missing the docker_env_dict parsing for the agents.
@@ -197,29 +207,33 @@ def main():
         os.makedirs(args.record_json_dir)
 
     # Create a Proximal Policy Optimization agent
-    agent = training_agent.initialize(env, summarizer={'directory': 'tensorforce_agent', 'labels': 'all'})
+    agent = training_agent.initialize(env, num_procs,
+                summarizer={'directory': 'tensorforce_agent', 'labels': 'all'},
+                saver={'directory': './saved_models', 'filename': 'ppo'})
 
     hist = load_model(agent, './saved_models')
 
 
     atexit.register(functools.partial(clean_up_agents, agents))
-    wrapped_env = WrappedEnv(env, visualize=args.render)
+
+    wrapped_envs=[]
+    for i in range(num_procs):
+        wrapped_envs.append(WrappedEnv(env, visualize=args.render))
 
     runner_time = timeit.default_timer()
 
     
     for i in range(1):
-        runner = ParallelRunner(agent=agent, environment=wrapped_env, history=hist)
-        runner.run(episodes=20000, max_episode_timesteps=2000)
+        runner = ParallelRunner(agent=agent, environments=wrapped_envs)
+        runner.run(num_episodes=1000, max_episode_timesteps=2000)
 
         print("Stats: ", runner.episode_rewards, runner.episode_timesteps,
-            runner.episode_times)
-        hist2 = {
-            "episode_rewards": runner.episode_rewards,
-            "episode_timesteps": runner.episode_timesteps,
-            "episode_times": runner.episode_times
+            runner.episode_seconds)
+        hist = {
+            "episode_rewards": hist.episode_rewards.extend(runner.episode_rewards),
+            "episode_timesteps": hist.episode_timesteps.extend(runner.episode_timesteps),
+            "episode_times": hist.episode_seconds.extend(runner.episode_seconds)
         }
-        hist = hist2
 
     print('Runner time: ', timeit.default_timer() - runner_time)
 

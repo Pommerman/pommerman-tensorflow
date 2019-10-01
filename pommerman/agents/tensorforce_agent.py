@@ -19,7 +19,7 @@ class TensorForceAgent(BaseAgent):
         ppo_state = self.envWrapper(obs)
         return self.tf_agent.act(ppo_state)
 
-    def initialize(self, env, summarizer=None):
+    def initialize(self, env, parallel_interactions=1, summarizer=None, saver=None):
         from gym import spaces
         from tensorforce.agents import PPOAgent
 
@@ -30,24 +30,28 @@ class TensorForceAgent(BaseAgent):
                 actions = {
                     str(num): {
                         'type': int,
-                        'num_actions': space.n
+                        'num_values': space.n
                     }
                     for num, space in enumerate(env.action_space.spaces)
                 }
             else:
-                actions = dict(type='int', num_actions=env.action_space.n)
+                actions = dict(type='int', num_values=env.action_space.n)
 
             self.tf_agent = PPOAgent(
                 states=dict(type='float', shape=env.observation_space.shape),
                 actions=actions,
+                max_episode_timesteps=2000,
                 network=[
                     dict(type='dense', size=64),
                     dict(type='dense', size=64)
                 ],
+                parallel_interactions=parallel_interactions,
                 summarizer=summarizer,
+                saver=saver,
                 execution={'num_parallel':64, 'type': 'single', 'session_config':None, 'distributed_spec':None},
-                batching_capacity=1000,
-                step_optimizer=dict(type='adam', learning_rate=1e-4))
+                batch_size=32)
+                # batching_capacity=1000,
+                # step_optimizer=dict(type='adam', learning_rate=1e-4))
 
             return self.tf_agent
         return None
@@ -56,7 +60,7 @@ class TensorForceAgent(BaseAgent):
         self.agent_id = agent_id
 
     def restore_model(self, model_name):
-        self.tf_agent.restore_model(model_name)
+        self.tf_agent.restore(model_name)
 
     def envWrapper(self, state):
         return self.env.featurize(state)
