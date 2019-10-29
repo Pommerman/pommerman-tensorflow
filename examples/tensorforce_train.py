@@ -59,8 +59,6 @@ class WrappedEnv(OpenAIGym):
         obs = self.gym.reset()
         agent_obs = self.gym.featurize(obs[3])
         return agent_obs
-    
-    
 
 def main():
     '''CLI interface to bootstrap taining'''
@@ -73,8 +71,10 @@ def main():
         "configs.py for options. default is 1v1")
     parser.add_argument(
         "--agents",
-        default="tensorforce::ppo,test::agents.SimpleAgent,"
-        "test::agents.SimpleAgent,test::agents.SimpleAgent",
+        # default="tensorforce::ppo,test::agents.SimpleAgent,"
+        # "test::agents.SimpleAgent,test::agents.SimpleAgent",
+        default="tensorforce::ppo,test::agents.RandomAgent,"
+        "test::agents.RandomAgent,test::agents.RandomAgent",
         help="Comma delineated list of agent types and docker "
         "locations to run the agents.")
         #agent in position 1
@@ -108,14 +108,14 @@ def main():
         help="File from which to load game state. Defaults to "
         "None.")
     parser.add_argument(
-            '--batch-size',
-            default=100,
+            '--batch-size', # This doesn't change batch-size in tensorforce_agent.py
+            default=10,
             type=int,
             help='average reward visualization by batch size. default=100 episodes'
             )
     parser.add_argument(
             '--episodes',
-            default=10000,
+            default=10,
             type=int,
             help='number of training episodes, default=1000. must be divisible by batch_size'
             )
@@ -153,7 +153,7 @@ def main():
     assert(num_episodes%batch_size==0)
     
     agents = [
-        helpers.make_agent_from_string(agent_string, agent_id + 1000)
+        helpers.make_agent_from_string(agent_string, agent_id)
         for agent_id, agent_string in enumerate(args.agents.split(","))
     ]
     env = make(config, agents, game_state_file)
@@ -173,7 +173,7 @@ def main():
         os.makedirs(args.record_json_dir)   
 
     agent = training_agent.initialize(env,num_procs, 
-                #summarizer={'directory': 'tensorforce_agent', 'labels': 'all'},
+                # summarizer={'directory': 'tensorforce_agent', 'labels': 'graph, losses'},
                 saver={'directory': './saved_models', 'filename': 'ppo'})
 
     # USHA Model should load automatically as saver is provided.
@@ -187,7 +187,7 @@ def main():
         wrapped_envs.append(WrappedEnv(env, visualize=args.render))
          
  
-    #wrapped_env=WrappedEnv(env,visualize=args.render))
+    # wrapped_env=WrappedEnv(env,visualize=args.render)
 
     runner_time = timeit.default_timer()
 
@@ -195,7 +195,7 @@ def main():
 
     if args.loadfile:
          try :
-             handle = open(save_path+model_name+'history.pickle','rb')
+             handle = open(save_path+model_name+'-history.pkl','rb')
              history=pickle.load(handle)
          except:
              history=None
@@ -204,6 +204,8 @@ def main():
 
 
     runner = ParallelRunner(agent=agent, environments=wrapped_envs)
+    # runner = Runner(agent=agent, environment=wrapped_env)
+
     
     num_episodes+=runner.global_episode #runner trains off number of global episodes
     '''
@@ -226,7 +228,7 @@ def main():
         history['episode_seconds']=runner.episode_seconds
         history['episode_agent_seconds']=runner.episode_agent_seconds
         
-    with open(save_path+model_name+'history.pickle','wb') as handle:
+    with open(save_path+model_name+'-history.pkl','wb') as handle:
         pickle.dump(history,handle)
     # USHA Model should save automatically as saver is provided.
     # agent.save(directory=save_path,filename=model_name,append_timestep=False)
@@ -236,7 +238,7 @@ def main():
     plt.title('average rewards per batch of episodes')
     plt.ylabel('average reward')
     plt.xlabel('batch of ' +str(batch_size)+' episodes')
-    plt.show()    
+    plt.show()
     
 
     try:

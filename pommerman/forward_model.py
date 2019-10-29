@@ -7,6 +7,7 @@ from . import constants
 from . import characters
 from . import utility
 
+from pommerman.envs.rewards_custom import Rewards
 
 class ForwardModel(object):
     """Class for helping with the [forward] modeling of the game state."""
@@ -52,7 +53,8 @@ class ForwardModel(object):
           flames: Updated flames.
           done: Whether we completed the game in these steps.
           info: The result of the game if it's completed.
-        """
+        """ 
+
         steps = []
         for _ in num_times:
             obs = self.get_observations(
@@ -63,6 +65,7 @@ class ForwardModel(object):
                 actions, board, agents, bombs, items, flames)
             next_obs = self.get_observations(
                 board, agents, bombs, is_partially_observable, agent_view_size)
+
             reward = self.get_rewards(agents, game_type, step_count, max_steps)
             done = self.get_done(agents, game_type, step_count, max_steps,
                                  training_agent)
@@ -123,7 +126,7 @@ class ForwardModel(object):
         return ret
 
     @staticmethod
-    def step(actions,
+    def step(reward_obj, actions,
              curr_board,
              curr_agents,
              curr_bombs,
@@ -132,6 +135,8 @@ class ForwardModel(object):
              max_blast_strength=10):
         board_size = len(curr_board)
 
+        # TODO-kevin Make edits here
+        
         # Tick the flames. Replace any dead ones with passages. If there is an
         # item there, then reveal that item.
         flames = []
@@ -480,6 +485,7 @@ class ForwardModel(object):
         for agent in alive_agents:
             if curr_board[agent.position] == constants.Item.Flames.value:
                 agent.die()
+                reward_obj.agent_died(agent)
             else:
                 curr_board[agent.position] = utility.agent_value(agent.agent_id)
 
@@ -627,7 +633,10 @@ class ForwardModel(object):
             }
 
     @staticmethod
-    def get_rewards(agents, game_type, step_count, max_steps):
+    def get_rewards(reward_obj, agents, game_type, step_count, max_steps):
+        # TODO-kevin Myron should have added obs to this function.
+        # TODO Based upon the obs give rewards to all of the agents.
+
 
         def any_lst_equal(lst, values):
             '''Checks if list are equal'''
@@ -636,15 +645,16 @@ class ForwardModel(object):
         alive_agents = [num for num, agent in enumerate(agents) \
                         if agent.is_alive]
         if game_type == constants.GameType.FFA:
-            if len(alive_agents) == 1:
-                # An agent won. Give them +1, others -1.
-                return [2 * int(agent.is_alive) - 1 for agent in agents]
-            elif step_count >= max_steps:
-                # Game is over from time. Everyone gets -1.
-                return [-1] * 4
-            else:
-                # Game running: 0 for alive, -1 for dead.
-                return [int(agent.is_alive) - 1 for agent in agents]
+            return reward_obj.getRewards()
+            # if len(alive_agents) == 1:
+            #     # An agent won. Give them +1, others -1.
+            #     return [2 * int(agent.is_alive) - 1 for agent in agents]
+            # elif step_count >= max_steps:
+            #     # Game is over from time. Everyone gets -1.
+            #     return [-1] * 4
+            # else:
+            #     # Game running: 0 for alive, -1 for dead.
+            #     return [int(agent.is_alive) - 1 for agent in agents]
         elif game_type == constants.GameType.OneVsOne:
             if len(alive_agents) == 1:
                 # An agent won. Give them +1, the other -1.

@@ -18,6 +18,7 @@ from .. import forward_model
 from .. import graphics
 from .. import utility
 
+from pommerman.envs.rewards_custom import Rewards
 
 class Pomme(gym.Env):
     '''The base pommerman env.'''
@@ -50,7 +51,7 @@ class Pomme(gym.Env):
         self._viewer = None
         self._is_partially_observable = is_partially_observable
         self._env = env
-
+        self.reward_obj = Rewards()
         self.training_agent = None
         self.model = forward_model.ForwardModel()
 
@@ -98,6 +99,7 @@ class Pomme(gym.Env):
 
     def set_agents(self, agents):
         self._agents = agents
+        self.reward_obj.setAgentList(agents)
 
     def set_training_agent(self, agent_id):
         self.training_agent = agent_id
@@ -143,10 +145,12 @@ class Pomme(gym.Env):
             self._game_type, self._env)
         for obs in self.observations:
             obs['step_count'] = self._step_count
+        # TODO shhimu Add more observations here.
         return self.observations
 
     def _get_rewards(self):
-        return self.model.get_rewards(self._agents, self._game_type,
+        # TODOTODO
+        return self.model.get_rewards(self.reward_obj, self._agents, self._game_type,
                                       self._step_count, self._max_steps)
 
     def _get_done(self):
@@ -186,7 +190,7 @@ class Pomme(gym.Env):
         self._intended_actions = actions
 
         max_blast_strength = self._agent_view_size or 10
-        result = self.model.step(
+        result = self.model.step(self.reward_obj,
             actions,
             self._board,
             self._agents,

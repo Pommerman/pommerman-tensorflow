@@ -14,7 +14,7 @@ class TensorForceAgent(BaseAgent):
         self.tf_agent = None
         self.agent_id = 0
         self.env = None
-
+        
     def act(self, obs, action_space):
         ppo_state = self.envWrapper(obs)
         return self.tf_agent.act(ppo_state)
@@ -45,11 +45,15 @@ class TensorForceAgent(BaseAgent):
                     dict(type='dense', size=64),
                     dict(type='dense', size=64)
                 ],
+                # critic_network=[
+                #     dict(type='dense', size=64),
+                #     dict(type='dense', size=64)
+                # ],
                 parallel_interactions=parallel_interactions,
                 summarizer=summarizer,
                 saver=saver,
                 execution={'num_parallel':64, 'type': 'single', 'session_config':None, 'distributed_spec':None},
-                batch_size=32)
+                batch_size=10)
                 # batching_capacity=1000,
                 # step_optimizer=dict(type='adam', learning_rate=1e-4))
 

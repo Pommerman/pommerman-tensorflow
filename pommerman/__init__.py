@@ -34,6 +34,7 @@ _register()
 
 def make(config_id, agent_list, game_state_file=None, render_mode='human'):
     '''Makes the pommerman env and registers it with gym'''
+    # TODO shhimu ray
     assert config_id in REGISTRY, "Unknown configuration '{}'. " \
         "Possible values: {}".format(config_id, REGISTRY)
     env = gym.make(config_id)
