@@ -488,7 +488,21 @@ class ForwardModel(object):
                 reward_obj.agent_died(agent)
             else:
                 curr_board[agent.position] = utility.agent_value(agent.agent_id)
-
+        #evaluate safety rating of each alive agents current position
+        safety_reward=[1]*len(reward_obj.agent_list)
+        for bomb in curr_bombs:
+            for _,indicies in bomb.explode().items():
+                for r,c in indicies:
+                    if not all([r >= 0, c >= 0, r < board_size, c < board_size]):
+                        break
+                    if curr_board[r][c]-10 in reward_obj.agent_ids:#agent constants is 10-13 so subtract 10 for id
+                        cur_agent_id=curr_board[r][c]-10
+                        #give reward penalty for being in range of bomb explosion, only update if it is les than current reward for that agent
+                        reward=(abs(bomb.position[0]-r)+abs(bomb.position[1]-c))/bomb.blast_strength
+                        if reward<safety_reward[cur_agent_id]:
+                            safety_reward[cur_agent_id]=reward
+        reward_obj.get_safety_reward(safety_reward)
+                        
         return curr_board, curr_agents, curr_bombs, curr_items, curr_flames
 
     def get_observations(self, curr_board, agents, bombs, flames,
