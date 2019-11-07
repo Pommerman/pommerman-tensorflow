@@ -15,7 +15,6 @@ import os
 import argparse
 
 import tensorforce
-tensorforce.__file__
 from tensorforce.execution import ParallelRunner
 from tensorforce.environments.openai_gym import OpenAIGym
 import gym
