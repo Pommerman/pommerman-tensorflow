@@ -15,7 +15,7 @@ import os
 import argparse
 
 import tensorforce
-
+tensorforce.__file__
 from tensorforce.execution import ParallelRunner
 from tensorforce.environments.openai_gym import OpenAIGym
 import gym
@@ -146,7 +146,7 @@ def main():
     num_procs=args.numprocs
 
     #variables    
-    save_path='saved_models\\'
+    save_path='saved_models/'
     model_name=args.modelname
     batch_size=args.batch_size
     num_episodes=args.episodes
@@ -174,7 +174,7 @@ def main():
 
     agent = training_agent.initialize(env,num_procs, 
                 # summarizer={'directory': 'tensorforce_agent', 'labels': 'graph, losses'},
-                saver={'directory': './saved_models', 'filename': 'ppo'})
+                saver={'directory': './'+save_path, 'filename': model_name})
 
     # USHA Model should load automatically as saver is provided.
     # if args.loadfile:

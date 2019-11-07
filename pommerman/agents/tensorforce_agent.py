@@ -52,7 +52,7 @@ class TensorForceAgent(BaseAgent):
                 parallel_interactions=parallel_interactions,
                 summarizer=summarizer,
                 saver=saver,
-                execution={'num_parallel':64, 'type': 'single', 'session_config':None, 'distributed_spec':None},
+                #execution={'num_parallel':64, 'type': 'single', 'session_config':None, 'distributed_spec':None},
                 batch_size=10)
                 # batching_capacity=1000,
                 # step_optimizer=dict(type='adam', learning_rate=1e-4))
