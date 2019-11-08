@@ -206,7 +206,7 @@ def main():
     # runner = Runner(agent=agent, environment=wrapped_env)
 
     
-    num_episodes+=runner.global_episode #runner trains off number of global episodes
+    num_episodes+=runner.global_episodes #runner trains off number of global episodes
     '''
     if you trained 100 episodes, num_episodes needs to be 200 if you want to train another 100
     '''
