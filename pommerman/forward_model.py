@@ -174,7 +174,7 @@ class ForwardModel(object):
         # Figure out desired next position for alive agents
         alive_agents = [agent for agent in curr_agents if agent.is_alive]
         desired_agent_positions = [agent.position for agent in alive_agents]
-
+        layed_bombs=[False]*len(curr_agents) #reward if layed a bomb
         for num_agent, agent in enumerate(alive_agents):
             position = agent.position
             # We change the curr_board here as a safeguard. We will later
@@ -184,16 +184,18 @@ class ForwardModel(object):
 
             if action == constants.Action.Stop.value:
                 pass
-            elif action == constants.Action.Bomb.value:
+            elif action == constants.Action.Bomb.value: 
                 position = agent.position
                 if not utility.position_is_bomb(curr_bombs, position):
                     bomb = agent.maybe_lay_bomb()
                     if bomb:
+                        #if agent lays bomb, add a reward
+                        layed_bombs[agent.agent_id]=True
                         curr_bombs.append(bomb)
             elif utility.is_valid_direction(curr_board, position, action):
                 desired_agent_positions[num_agent] = agent.get_next_position(
                     action)
-
+        reward_obj.layed_bombs=layed_bombs
         # Gather desired next positions for moving bombs. Handle kicks later.
         desired_bomb_positions = [bomb.position for bomb in curr_bombs]
 
@@ -422,15 +424,26 @@ class ForwardModel(object):
                 # Move bomb to the new position.
                 # NOTE: We already set the moving direction up above.
                 bomb.position = desired_bomb_positions[num_bomb]
-
+        #give reward for picking up powerups
+        kick=[False]*len(curr_agents)
+        ammo=[False]*len(curr_agents)
+        strength=[False]*len(curr_agents)
         for num_agent, agent in enumerate(alive_agents):
             if desired_agent_positions[num_agent] != agent.position:
                 agent.move(actions[agent.agent_id])
                 if utility.position_is_powerup(curr_board, agent.position):
+                    if curr_board[agent.position]==6:
+                        ammo[agent.agent_id]=True
+                    elif curr_board[agent.position]==7:
+                        strength[agent.agent_id]=True
+                    else:
+                        kick[agent.agent_id]=True
                     agent.pick_up(
                         constants.Item(curr_board[agent.position]),
                         max_blast_strength=max_blast_strength)
-
+        reward_obj.kick_powerup=kick
+        reward_obj.extrabomb_powerup=ammo
+        reward_obj.bombstrength_powerup=strength
         # Explode bombs.
         exploded_map = np.zeros_like(curr_board)
         has_new_explosions = False
@@ -482,13 +495,33 @@ class ForwardModel(object):
             curr_board[flame.position] = constants.Item.Flames.value
 
         # Kill agents on flames. Otherwise, update position on curr_board.
+        dead_agents=0
         for agent in alive_agents:
             if curr_board[agent.position] == constants.Item.Flames.value:
                 agent.die()
-                reward_obj.agent_died(agent)
+                dead_agents+=1
             else:
                 curr_board[agent.position] = utility.agent_value(agent.agent_id)
-
+        reward_obj.died_agents=dead_agents
+        #evaluate safety rating of each alive agents current position
+        safety_reward=[1]*len(curr_agents)
+        for bomb in curr_bombs:
+            for agent in alive_agents:#give 0 reward if agent standing on the bomb
+                if agent.position==bomb.position:
+                    safety_reward[agent.agent_id]=0
+                    break
+            for _,indicies in bomb.explode().items():# find agents in distance
+                for r,c in indicies:
+                    if not all([r >= 0, c >= 0, r < board_size, c < board_size]):
+                        break
+                    if curr_board[r][c]-10 in reward_obj.agent_ids:#agent constants is 10-13 so subtract 10 for id
+                        cur_agent_id=curr_board[r][c]-10
+                        #give reward penalty for being in range of bomb explosion, only update if it is les than current reward for that agent
+                        reward=(abs(bomb.position[0]-r)+abs(bomb.position[1]-c))/bomb.blast_strength
+                        if reward<safety_reward[cur_agent_id]:
+                            safety_reward[cur_agent_id]=reward
+        reward_obj.safety_reward=safety_reward
+                        
         return curr_board, curr_agents, curr_bombs, curr_items, curr_flames
 
     def get_observations(self, curr_board, agents, bombs, flames,
