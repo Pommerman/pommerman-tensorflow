@@ -31,7 +31,7 @@ def main():
     env = pommerman.make('PommeFFACompetition-v0', agent_list)
 
     test_agent.initialize(env)
-    test_agent.restore_model('./saved_models')
+    test_agent.restore_model('./saved_models/')
 
     # observations = []
     # inputs = []
