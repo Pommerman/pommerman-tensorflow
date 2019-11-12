@@ -121,13 +121,12 @@ def main():
     parser.add_argument(
             '--modelname',
             default='default',
-            help='name of model file, default= default.ckpt'
+            help='name of model file savename, timesteps wil be appended. default= default'
             )
     parser.add_argument(
             '--loadfile',
-            default=False,
-            action='store_true',
-            help='sets true to load prev model'
+            default=None,
+            help='name of model you want to load'
             )
     parser.add_argument(
             '--numprocs',
@@ -173,11 +172,12 @@ def main():
 
     agent = training_agent.initialize(env,num_procs, 
                 # summarizer={'directory': 'tensorforce_agent', 'labels': 'graph, losses'},
-                saver={'directory': './'+save_path, 'filename': model_name})
+                #saver={'directory': './'+save_path, 'filename': model_name,'append_timesteps': True}
+                )
 
     # USHA Model should load automatically as saver is provided.
-    # if args.loadfile:
-    #    agent.restore(directory=save_path,filename=model_name)
+    if args.loadfile:
+        agent.restore(directory=save_path,filename=args.loadfile)
 
     atexit.register(functools.partial(clean_up_agents, agents))
      
@@ -194,7 +194,7 @@ def main():
 
     if args.loadfile:
          try :
-             handle = open(save_path+model_name+'-history.pkl','rb')
+             handle = open(save_path+args.modelname+'-history.pkl','rb')
              history=pickle.load(handle)
          except:
              history=None
@@ -230,7 +230,7 @@ def main():
     with open(save_path+model_name+'-history.pkl','wb') as handle:
         pickle.dump(history,handle)
     # USHA Model should save automatically as saver is provided.
-    # agent.save(directory=save_path,filename=model_name,append_timestep=False)
+    agent.save(directory=save_path,filename=model_name+str(runner.global_episodes),append_timestep=False)
     print('Runner time: ', timeit.default_timer() - runner_time)
 
     plt.plot(np.arange(0,int(len(history['episode_rewards'])/batch_size)),np.mean(np.asarray(history['episode_rewards']).reshape(-1,batch_size),axis=1))
