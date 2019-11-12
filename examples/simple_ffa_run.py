@@ -1,7 +1,7 @@
 '''An example to show how to set up an pommerman game programmatically'''
 import pommerman
 from pommerman import agents
-
+import argparse
 from data_collection_helper import save_game, load_game
 
 def main():
@@ -10,7 +10,15 @@ def main():
        Use this as an example to set up your training env.
     '''
     # Print all possible environments in the Pommerman registry
+    
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--modelname", default=None, help="model name of model_name.json")
+    parser.add_argument(
+        "--directory",
+        default='./saved_models/',
+        help="file path of models folder")
     print(pommerman.REGISTRY)
+    args = parser.parse_args()
 
     test_agent = agents.TensorForceAgent()
     test_agent.set_agent_id(0)
@@ -31,7 +39,7 @@ def main():
     env = pommerman.make('PommeFFACompetition-v0', agent_list)
 
     test_agent.initialize(env)
-    test_agent.restore_model('./saved_models/')
+    test_agent.restore_model(directory=args.directory,filename=args.modelname)
 
     # observations = []
     # inputs = []
