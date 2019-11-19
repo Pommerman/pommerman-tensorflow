@@ -213,7 +213,7 @@ def main():
     
     runner.run(num_episodes=num_episodes, max_episode_timesteps=2000)
     
-    #print(runner.episode_rewards)
+    print(runner.episode_rewards)
     
     if history:
         history['episode_rewards'].extend(runner.episode_rewards)

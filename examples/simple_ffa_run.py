@@ -56,7 +56,7 @@ def main():
             # TODO Change indices of arrays to select player info.
             # observations.append({
             #     'state': env.get_json_info(), 'reward': reward, 'done': done, 'actions': actions})
-            
+            print(reward[0])
 
         print('Episode {} finished'.format(i_episode))
 
