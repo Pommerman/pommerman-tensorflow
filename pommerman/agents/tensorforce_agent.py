@@ -63,8 +63,8 @@ class TensorForceAgent(BaseAgent):
     def set_agent_id(self, agent_id):
         self.agent_id = agent_id
 
-    def restore_model(self, model_name):
-        self.tf_agent.restore(model_name)
+    def restore_model(self, directory=None,filename=None):
+        self.tf_agent.restore(directory=directory,filename=filename)
 
     def envWrapper(self, state):
         return self.env.featurize(state)
