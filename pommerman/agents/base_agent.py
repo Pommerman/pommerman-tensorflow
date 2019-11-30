@@ -9,6 +9,9 @@ class BaseAgent:
     def __init__(self, character=characters.Bomber):
         self._character = character
 
+        self.visited = []
+        self.num_cells_visited = 0
+
     def __getattr__(self, attr):
         return getattr(self._character, attr)
 
@@ -33,3 +36,15 @@ class BaseAgent:
 
     def shutdown(self):
         pass
+
+    def _visit(self, cell):
+        self.visited.append(cell)
+        self.num_cells_visited += 1
+
+    def getPositionReward(self, cell):
+        if(cell not in self.visited):
+            self._visit(cell)
+            return 0.5
+        else:
+            self.num_cells_visited += 1
+            return 0.5 / self.num_cells_visited

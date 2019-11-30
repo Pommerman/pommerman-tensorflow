@@ -13,8 +13,7 @@ def make_agent_from_string(agent_string, agent_id, docker_env_dict=None):
     
     agent_type, agent_control = agent_string.split("::")
 
-    # TODO shhimu ray
-    assert agent_type in ["player", "playerblock", "simple", "random", "docker", "http" , "test", "tensorforce", "ray"]
+    assert agent_type in ["player", "playerblock", "simple", "random", "docker", "http" , "test", "tensorforce"]
 
     agent_instance = None
 
@@ -42,7 +41,5 @@ def make_agent_from_string(agent_string, agent_id, docker_env_dict=None):
         agent_instance = eval(agent_control)()
     elif agent_type == "tensorforce":
         agent_instance = agents.TensorForceAgent(algorithm=agent_control)
-    elif agent_type == "ray":
-        agent_instance = agents.RayAgent()
 
     return agent_instance

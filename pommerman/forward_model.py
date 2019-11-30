@@ -135,8 +135,6 @@ class ForwardModel(object):
              max_blast_strength=10):
         board_size = len(curr_board)
 
-        # TODO-kevin Make edits here
-        
         # Tick the flames. Replace any dead ones with passages. If there is an
         # item there, then reveal that item.
         flames = []
@@ -677,16 +675,18 @@ class ForwardModel(object):
         alive_agents = [num for num, agent in enumerate(agents) \
                         if agent.is_alive]
         if game_type == constants.GameType.FFA:
-            return reward_obj.getRewards()
-            # if len(alive_agents) == 1:
-            #     # An agent won. Give them +1, others -1.
-            #     return [2 * int(agent.is_alive) - 1 for agent in agents]
-            # elif step_count >= max_steps:
-            #     # Game is over from time. Everyone gets -1.
-            #     return [-1] * 4
-            # else:
-            #     # Game running: 0 for alive, -1 for dead.
-            #     return [int(agent.is_alive) - 1 for agent in agents]
+            reward = []
+            if len(alive_agents) == 1:
+                # An agent won. Give them +1, others -1.
+                reward = [2 * int(agent.is_alive) - 1 for agent in agents]
+            elif step_count >= max_steps:
+                # Game is over from time. Everyone gets -1.
+                reward = [-1] * 4
+            else:
+                # Game running: 0 for alive, -1 for dead.
+                reward = [int(agent.is_alive) - 1 for agent in agents]
+
+            return reward_obj.getRewards() + reward
         elif game_type == constants.GameType.OneVsOne:
             if len(alive_agents) == 1:
                 # An agent won. Give them +1, the other -1.

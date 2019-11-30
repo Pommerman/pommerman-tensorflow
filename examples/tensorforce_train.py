@@ -121,16 +121,17 @@ def main():
     parser.add_argument(
             '--modelname',
             default='default',
-            help='name of model file savename, timesteps wil be appended. default= default'
+            help='name of model file, default= d6efault.ckpt'
             )
     parser.add_argument(
             '--loadfile',
-            default=None,
-            help='name of model you want to load'
+            default=True,
+            action='store_true',
+            help='sets true to load prev model'
             )
     parser.add_argument(
             '--numprocs',
-            default=12,
+            default=1,
             type=int,
             help='num parallel processes. default=12'
             )
@@ -176,8 +177,8 @@ def main():
                 )
 
     # USHA Model should load automatically as saver is provided.
-    if args.loadfile:
-        agent.restore(directory=save_path,filename=args.loadfile)
+    # if args.loadfile:
+    #     agent.restore(directory=save_path,filename=args.loadfile)
 
     atexit.register(functools.partial(clean_up_agents, agents))
      
@@ -206,12 +207,12 @@ def main():
     # runner = Runner(agent=agent, environment=wrapped_env)
 
     
-    num_episodes+=runner.global_episodes #runner trains off number of global episodes
+    num_episodes+=runner.global_episode #runner trains off number of global episodes
     '''
     if you trained 100 episodes, num_episodes needs to be 200 if you want to train another 100
     '''
     
-    runner.run(num_episodes=num_episodes, max_episode_timesteps=2000)
+    runner.run(num_episodes=num_episodes, max_episode_timesteps=800)
     
     print(runner.episode_rewards)
     
@@ -230,7 +231,7 @@ def main():
     with open(save_path+model_name+'-history.pkl','wb') as handle:
         pickle.dump(history,handle)
     # USHA Model should save automatically as saver is provided.
-    agent.save(directory=save_path,filename=model_name+str(runner.global_episodes),append_timestep=False)
+    agent.save(directory=save_path,filename=model_name+str(runner.global_episode),append_timestep=False)
     print('Runner time: ', timeit.default_timer() - runner_time)
 
     plt.plot(np.arange(0,int(len(history['episode_rewards'])/batch_size)),np.mean(np.asarray(history['episode_rewards']).reshape(-1,batch_size),axis=1))
